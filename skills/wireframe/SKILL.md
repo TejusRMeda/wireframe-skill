@@ -43,12 +43,16 @@ These tokens are identical regardless of target — only the tool calls used to 
    - Identify: navigation, headers, content areas, cards, buttons, forms, lists, avatars, status badges
    - Ask the user whether the wireframe should be written into Paper or Figma if it isn't already clear from context (e.g. which file is currently open)
 
-4. Document the layout:
+4. Build an explicit **element inventory** — a literal checklist, not prose. This is the source of truth Phase 4 verifies against, so list every distinct element you can see, not just the major sections:
    - Overall dimensions and device type (mobile/tablet/desktop)
-   - Major sections and their relationships
-   - Content hierarchy (headings, body text, captions, labels)
-   - Interactive elements (buttons, inputs, links)
-   - Data display patterns (cards, tables, lists)
+   - Every navigation item, **including hierarchy** (which items are indented/nested under a parent) and **every affordance icon** (expand/collapse chevrons, notification badges, counts) — these are exactly the details that are easy to draw as a flat list and lose
+   - Every section header and whether it has its own expand/collapse control
+   - Content hierarchy (headings, body text, captions, labels) — list each distinct text block, not "some description text"
+   - Every interactive element (buttons, inputs, links) with its state (selected/unselected, filled/outlined)
+   - Data display patterns (cards, tables, lists) and, for each, how many instances exist (e.g. "2 pricing cards" not "pricing cards")
+   - Anything deliberately out of scope for a wireframe — exact brand colors, logo marks, photography — note it here as "intentionally omitted," not left implicit
+
+   Keep this checklist around verbatim; Phase 4 re-reads it item by item.
 
 ### Phase 2 — Create the Wireframe Container
 
@@ -244,24 +248,40 @@ button.strokeWeight = 2;
 // then loadFontAsync -> create text child -> appendChild
 ```
 
-### Phase 4 — Review and Adjust
+### Phase 4 — Verify Against the Inventory
 
-After building the wireframe, take a screenshot and verify:
+Generate → verify → fix → confirm. Don't skip straight from "it's built" to "done" — a screenshot glance is not verification. This phase checks the actual result against the Phase 1 checklist, item by item.
 
-1. **Card containment**: All content (avatars, text, buttons) inside their card outlines
-2. **Typography legibility**: Text readable at all sizes
-3. **Spacing rhythm**: Consistent gaps, nothing cramped
-4. **Alignment**: Elements that should align vertically/horizontally do so
-5. **Hand-drawn cohesion**: Wobbly lines + Architects Daughter font feel unified
+1. **Collect every node ID you created.** Every Phase 3 call already returns `createdNodeIds` — keep a running list across all calls (don't lose earlier ones when a later call returns its own).
+2. **Take a screenshot** for a visual pass: Paper via `get_screenshot`; Figma via `await frame.screenshot()` inline or `get_screenshot`.
+3. **Pull structural data, don't rely on the screenshot alone.** Paper: re-check via `get_tree_summary`/`get_children`. Figma: `get_metadata`, or a `use_figma` read-only script that fetches `{ name, type, x, y, characters }` for each ID you collected — this is what actually catches bugs like "the text was created but its indentation/x got dropped," which a screenshot at small scale can hide.
+4. **Walk the Phase 1 checklist top to bottom, one line at a time, and mark each ✅ or ❌** against what the structural data + screenshot actually show — not what you intended to build. Common misses to check explicitly, because they're easy to drop silently:
+   - Hierarchy/indentation on nested list or nav items (a stray `.trim()` or copy-paste can flatten it without erroring)
+   - Small affordance icons — chevrons, badges, counts, close/expand icons
+   - Selected/active states (highlight box, thicker stroke, checkmark) actually attached to the right item
+   - Every card/row instance present at the count noted in the inventory (2 pricing cards means 2, not 1)
+   - Helper/caption text under each field, not just the field itself
 
-Paper: use `get_screenshot`. Figma: use `await frame.screenshot()` inline, or `get_screenshot` after major milestones. For Figma, also run `get_metadata` to confirm structure (hierarchy, counts, positions) — don't rely on the screenshot alone for structural correctness.
+### Phase 5 — Fix Missed Elements
 
-Fix any issues before finishing. For Figma, keep edits incremental (≤10 logical operations per `use_figma` call) and always return created/mutated node IDs so follow-up calls can target them.
+For every ❌ from Phase 4:
+1. Make a small, targeted fix — create the missing node(s) or correct the broken property (e.g. reposition an `x` that got reset). Don't rebuild what already passed.
+2. Re-verify just that item (re-fetch its node data or re-screenshot the affected region) before moving to the next ❌.
+3. Loop back to Phase 4's checklist walk once all fixes are applied, to confirm nothing else regressed.
+4. If something can't reasonably be represented in wireframe form (e.g. a precise data visualization), don't silently drop it — note it in the inventory as intentionally omitted, with the reason, so Phase 6 can surface it instead of it just disappearing.
 
-### Phase 5 — Finish
+For Figma, keep both build and fix edits incremental (≤10 logical operations per `use_figma` call) and always return created/mutated node IDs so follow-up calls can target them.
+
+### Phase 6 — Finish and Confirm with the User
 
 **Paper:** call `finish_working_on_nodes()` when complete.
-**Figma:** no equivalent close-out call — just confirm the final `screenshot()`/`get_screenshot` looks right and report the frame name/ID to the user.
+**Figma:** no equivalent close-out call — just confirm the final `screenshot()`/`get_screenshot` looks right.
+
+Then report back to the user rather than declaring done silently:
+- The final screenshot (or a description of where to find it — frame name/ID for Figma, artboard name for Paper).
+- A one-line pass/fail summary of the Phase 4 checklist (e.g. "18/18 elements verified").
+- Anything logged as intentionally omitted in Phase 1/5, and why (brand colors and logo marks are expected omissions for this skill — call them out as deliberate, not as gaps).
+- Ask the user to confirm the result matches before treating the wireframe as finished — they're the ones who can catch a structural miss you can't (e.g. "actually there's a 4th nav item that was scrolled off in the screenshot").
 
 ## Size Guidelines
 
