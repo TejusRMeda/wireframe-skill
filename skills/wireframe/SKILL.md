@@ -90,6 +90,8 @@ Use `figma.createAutoLayout(...)` instead of `figma.createFrame()` for any secti
 
 Work in small pieces — one visual group at a time. The user sees your work appear live (Paper) or can review after each `use_figma` call (Figma).
 
+**Figma gotcha — `vectorPaths` coordinates are local to the node, not the frame.** Every pattern below (cards, icons, chevrons) uses small path coordinates that already start near `0` and stay within roughly `0..width`/`0..height` — that's not a style choice, it's required. Figma derives the vector node's own bounding box from the min/max of the path data, then `node.x`/`node.y` positions *that* box within the frame. Writing a path with frame-scale coordinates (e.g. `"M260 480 Q300 380..."`, copied as if plotting directly on the canvas — easy to do for a multi-point chart line) gets silently renormalized to a tiny local box, and `node.x = 0` then plants it at the frame's literal top-left corner instead of where you intended, with no error. Author every path in local space starting near `(0,0)`, then set `node.x`/`node.y` to the real frame position afterward. This is exactly the kind of thing Phase 4's bounds check (below) exists to catch if it slips through anyway.
+
 #### Wobbly Card/Container Pattern
 
 **Paper (HTML/SVG):**
@@ -255,12 +257,14 @@ Generate → verify → fix → confirm. Don't skip straight from "it's built" t
 1. **Collect every node ID you created.** Every Phase 3 call already returns `createdNodeIds` — keep a running list across all calls (don't lose earlier ones when a later call returns its own).
 2. **Take a screenshot** for a visual pass: Paper via `get_screenshot`; Figma via `await frame.screenshot()` inline or `get_screenshot`.
 3. **Pull structural data, don't rely on the screenshot alone.** Paper: re-check via `get_tree_summary`/`get_children`. Figma: `get_metadata`, or a `use_figma` read-only script that fetches `{ name, type, x, y, characters }` for each ID you collected — this is what actually catches bugs like "the text was created but its indentation/x got dropped," which a screenshot at small scale can hide.
-4. **Walk the Phase 1 checklist top to bottom, one line at a time, and mark each ✅ or ❌** against what the structural data + screenshot actually show — not what you intended to build. Common misses to check explicitly, because they're easy to drop silently:
-   - Hierarchy/indentation on nested list or nav items (a stray `.trim()` or copy-paste can flatten it without erroring)
+4. **For Figma, run an out-of-bounds check** as part of that same read-only script: compare each node's `absoluteBoundingBox` against the frame's own `absoluteBoundingBox`. Any node whose bounds fall outside the frame (or suspiciously clustered at the frame's exact `x`/`y` origin) is a strong signal of the local-vs-frame coordinate mixup described in Phase 3 — usually a multi-point path (chart lines, custom icons) authored with frame-scale coordinates instead of node-local ones.
+5. **Walk the Phase 1 checklist top to bottom, one line at a time, and mark each ✅ or ❌** against what the structural data + screenshot actually show — not what you intended to build. Common misses to check explicitly, because they're easy to drop silently:
+   - Hierarchy/indentation on nested list or nav items (string-encoded indentation is fragile — prefer a structured field like `{level: 1}` over leading spaces, since a stray `.trim()` or copy-paste can flatten a string encoding without erroring)
    - Small affordance icons — chevrons, badges, counts, close/expand icons
    - Selected/active states (highlight box, thicker stroke, checkmark) actually attached to the right item
    - Every card/row instance present at the count noted in the inventory (2 pricing cards means 2, not 1)
    - Helper/caption text under each field, not just the field itself
+   - Elements positioned near other interactive/overlay elements (an open dropdown, a tooltip) — check they don't land inside that element's bounds and end up hidden behind it
 
 ### Phase 5 — Fix Missed Elements
 
