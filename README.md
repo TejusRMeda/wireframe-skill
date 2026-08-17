@@ -2,6 +2,8 @@
 
 Turn any polished UI screen into a hand-drawn, napkin-sketch wireframe — wobbly outlines, handwritten typography, warm cream paper. Works straight from a [Paper](https://app.paper.design) design file, a Figma file, or a plain screenshot.
 
+![Before and after — a real UI screen next to its wireframe conversion](assets/before-after.png)
+
 Built out of a real constraint: some of my portfolio case studies are under NDA, so I couldn't show the actual UI. This lets the structure and flow speak for themselves — same layout, no client colors or branding.
 
 ## What it does
@@ -42,13 +44,22 @@ It needs the [Paper MCP server](https://paper.design) or the [Figma MCP server](
 
 ## How it works
 
-1. **Analyze the source** — reads the Paper/Figma node tree (or the image) to map navigation, cards, forms, and content hierarchy.
-2. **Create a matching container** — a new artboard (Paper) or frame (Figma), same dimensions as the source, cream background.
+Generate → verify → fix → confirm, not "build it and hope":
+
+1. **Analyze the source** — reads the Paper/Figma node tree (or the image) and builds an explicit element checklist (every nav item, icon, badge, field, and state — not just the major sections).
+2. **Create a matching container** — a new artboard (Paper) or frame (Figma) at the source's *true* dimensions, cream background.
 3. **Build incrementally** — writes wobbly card outlines, handwritten text, sketchy icons, status badges, buttons, and avatars as HTML/SVG (Paper) or Plugin API calls (Figma).
-4. **Review** — screenshots the result and checks containment, spacing, alignment, and legibility.
-5. **Finish** — hands the artboard/frame back.
+4. **Verify against the checklist** — pulls structural data (not just a screenshot) and checks every item from step 1 was actually built, in the right place.
+5. **Fix anything missed** — targeted patches for whatever failed verification, then re-checks.
+6. **Confirm with you** — reports a pass/fail count and anything intentionally left out (brand colors, logo marks — the whole point of the tool) before calling it done.
 
 Full prompt logic lives in [`skills/wireframe/SKILL.md`](skills/wireframe/SKILL.md).
+
+## Known limitations
+
+- **Figma has more mileage, and its own documented footguns.** Several real bugs turned up and got fixed by running this against live Figma files repeatedly — a nav-hierarchy string that silently lost its indentation, a chart line positioned in the wrong coordinate space (Figma's `vectorPaths` are node-local, not frame-absolute), an unsupported SVG arc command, a container sized from a downscaled preview image instead of the source's true dimensions, a bounds check that only tested one corner instead of all four edges. Each is now documented directly in `SKILL.md` as a guardrail, checked automatically on every run. The Paper path went through the same generate → verify → fix → confirm process on a comparably complex screen (43-element checklist, full nav hierarchy, nested sections) and passed clean on the first attempt — Paper's plain HTML/SVG output has fewer of the coordinate-space and API-surface gotchas Figma's Plugin API has, which is a property of the two platforms, not the skill being less tested on one of them.
+- It's a structural sketch, not a pixel-accurate export — spacing and icon shapes are approximated, intentionally.
+- Requires the Architects Daughter Google Font to be available in the target file; falls back to a system font and tells you when it isn't.
 
 ## License
 
