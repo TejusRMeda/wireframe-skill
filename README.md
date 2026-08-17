@@ -1,6 +1,8 @@
 # wireframe — sketchy wireframe generator (Claude Skill)
 
-Turn any polished UI screen into a hand-drawn, napkin-sketch wireframe — wobbly SVG outlines, handwritten typography, warm cream paper. Works straight from a [Paper](https://app.paper.design) design file or from a plain screenshot.
+Turn any polished UI screen into a hand-drawn, napkin-sketch wireframe — wobbly outlines, handwritten typography, warm cream paper. Works straight from a [Paper](https://app.paper.design) design file, a Figma file, or a plain screenshot.
+
+Built out of a real constraint: some of my portfolio case studies are under NDA, so I couldn't show the actual UI. This lets the structure and flow speak for themselves — same layout, no client colors or branding.
 
 ## What it does
 
@@ -36,15 +38,15 @@ The skill only runs when explicitly invoked (it won't auto-trigger on its descri
 - "make a sketchy version of this"
 - "convert to hand-drawn wireframe"
 
-It needs the [Paper MCP server](https://paper.design) connected to read Paper files; screenshots/images work with no extra setup.
+It needs the [Paper MCP server](https://paper.design) or the [Figma MCP server](https://www.figma.com/) connected to read/write those files; screenshots/images work with no extra setup (output still needs one of the two connected to draw into).
 
 ## How it works
 
-1. **Analyze the source** — reads the Paper node tree (or the image) to map navigation, cards, forms, and content hierarchy.
-2. **Create a matching artboard** — same dimensions as the source, cream background.
-3. **Build incrementally** — writes HTML/SVG in small visual groups: wobbly card outlines, handwritten text, sketchy icons, status badges, buttons, avatars.
+1. **Analyze the source** — reads the Paper/Figma node tree (or the image) to map navigation, cards, forms, and content hierarchy.
+2. **Create a matching container** — a new artboard (Paper) or frame (Figma), same dimensions as the source, cream background.
+3. **Build incrementally** — writes wobbly card outlines, handwritten text, sketchy icons, status badges, buttons, and avatars as HTML/SVG (Paper) or Plugin API calls (Figma).
 4. **Review** — screenshots the result and checks containment, spacing, alignment, and legibility.
-5. **Finish** — hands the artboard back.
+5. **Finish** — hands the artboard/frame back.
 
 Full prompt logic lives in [`skills/wireframe/SKILL.md`](skills/wireframe/SKILL.md).
 
